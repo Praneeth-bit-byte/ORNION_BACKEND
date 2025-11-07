@@ -2,7 +2,6 @@ import os
 import re
 import time
 import threading
-import subprocess
 import uuid
 from datetime import datetime
 import tempfile
@@ -13,46 +12,23 @@ from pymongo import MongoClient
 import requests as py_requests
 from dotenv import load_dotenv
 from gtts import gTTS
-from playsound import playsound
-from pystray import Icon, Menu, MenuItem as item
-from PIL import Image
 
 # =========================================================
 #               LOAD ENVIRONMENT VARIABLES
 # =========================================================
 load_dotenv()
 
-# =========================================================
-#               VOICE ENGINE (gTTS)
-# =========================================================
-def speak(text: str) -> None:
-    """Convert text to speech using Google TTS."""
-    print(f"ORNION: {text}")
-    try:
-        tts = gTTS(text=text, lang='en', slow=False, tld='com')
-        with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as fp:
-            tts.save(fp.name)
-            playsound(fp.name)
-    except Exception as e:
-        print(f"[Speech Error] {e}")
-
-
-# =========================================================
-#                 CONFIGURATION
-# =========================================================
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 PERPLEXITY_API_URL = os.getenv("PERPLEXITY_API_URL", "https://api.perplexity.ai/chat/completions")
 MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME", "OrnionDB")
-CONV_COLLECTION = os.getenv("CONV_COLLECTION", "Conversations")
-
+DB_NAME = os.getenv("DB_NAME", "JarvisDB")
+CONV_COLLECTION = os.getenv("CONV_COLLECTION", "conversations")
 
 # =========================================================
 #                   FLASK APP SETUP
 # =========================================================
 app = Flask(__name__, template_folder="templates")
 CORS(app)
-
 
 # =========================================================
 #                   MONGODB CONNECTION
@@ -71,34 +47,19 @@ except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
     conversations = None
 
-
 # =========================================================
-#                WINDOWS APP LAUNCHING
+#               VOICE ENGINE (gTTS)
 # =========================================================
-store_apps = {
-    "whatsapp": "explorer.exe shell:appsFolder\\5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App",
-    "camera": "explorer.exe shell:appsFolder\\Microsoft.WindowsCamera_8wekyb3d8bbwe!App",
-    "photos": "explorer.exe shell:appsFolder\\Microsoft.Windows.Photos_8wekyb3d8bbwe!App",
-    "calculator": "explorer.exe shell:appsFolder\\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App",
-    "settings": "explorer.exe ms-settings:"
-}
-
-def open_any_app(app_name: str) -> str:
-    """Open Windows apps or executables by name."""
-    app_name = app_name.lower()
+def speak(text: str) -> None:
+    """Convert text to speech using Google TTS (optional)."""
+    print(f"ORNION: {text}")
     try:
-        if app_name in store_apps:
-            os.system(store_apps[app_name])
-            speak(f"Opening {app_name}.")
-            return f"Opening {app_name}."
-        else:
-            subprocess.Popen(f"start {app_name}", shell=True)
-            speak(f"Opening {app_name}.")
-            return f"Opening {app_name}."
+        tts = gTTS(text=text, lang='en', slow=False, tld='com')
+        with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as fp:
+            tts.save(fp.name)
+            # Audio playback skipped on production server
     except Exception as e:
-        speak(f"Sorry, I couldn’t open {app_name}. Error: {e}")
-        return f"Sorry, I couldn’t open {app_name}. Error: {e}"
-
+        print(f"[Speech Error] {e}")
 
 # =========================================================
 #                PERPLEXITY API HANDLER
@@ -133,7 +94,6 @@ def ask_perplexity(user_input: str) -> str:
         print("❌ Perplexity API error:", e)
         return "Sorry, I couldn't connect to my knowledge system right now."
 
-
 # =========================================================
 #                      FLASK ROUTES
 # =========================================================
@@ -149,53 +109,13 @@ def ask():
     user_input = request.json.get('message', '')
     start = time.time()
 
-    # Open app command
-    match = re.match(r'open\s+([a-zA-Z0-9 _-]+)', user_input.lower())
-    if match:
-        app_name = match.group(1).strip()
-        reply = open_any_app(app_name)
-        return jsonify({'input': user_input, 'reply': reply})
-
-    # Otherwise use AI backend
     reply = ask_perplexity(user_input)
     print("Perplexity took", round(time.time() - start, 2), "seconds")
 
-    # Speak the reply aloud
+    # Speak the reply (optional, non-blocking)
     threading.Thread(target=speak, args=(reply,), daemon=True).start()
 
     return jsonify({'input': user_input, 'reply': reply})
-
-
-@app.route("/wake", methods=["POST"])
-def wake():
-    """Handle wake-up signal from frontend."""
-    return jsonify({"status": "awake"})
-
-
-@app.route("/sleep", methods=["POST"])
-def sleep():
-    """Handle sleep signal from frontend."""
-    return jsonify({"status": "sleep"})
-
-
-# =========================================================
-#              DESKTOP TRIGGER INTEGRATION
-# =========================================================
-desktop_trigger_state = {"listen": False, "stop": False}
-
-@app.route('/trigger_listen', methods=["POST", "GET"])
-def trigger_listen():
-    if desktop_trigger_state["listen"]:
-        desktop_trigger_state["listen"] = False
-        return jsonify({"status": "started_listening"})
-    return jsonify({"status": "idle"})
-
-@app.route('/trigger_stop', methods=["POST", "GET"])
-def trigger_stop():
-    if desktop_trigger_state["stop"]:
-        desktop_trigger_state["stop"] = False
-        return jsonify({"status": "stopped_speaking"})
-    return jsonify({"status": "idle"})
 
 
 # =========================================================
@@ -277,48 +197,8 @@ def get_history(session_id):
 
 
 # =========================================================
-#                 SYSTEM TRAY INTEGRATION
-# =========================================================
-def quit_app(icon, item):
-    """Exit ORNION system tray."""
-    print("🛑 Exiting Ornion...")
-    os._exit(0)
-
-def start_listening():
-    print("🎤 Listening started (desktop signal)")
-    desktop_trigger_state["listen"] = True
-
-def stop_speaking():
-    print("🔇 Speaking stopped (desktop signal)")
-    desktop_trigger_state["stop"] = True
-
-def run_flask():
-    app.run(debug=False, use_reloader=False)
-
-def start_tray():
-    """Start system tray icon (Windows only)."""
-    try:
-        icon_image = Image.open("ornion.png")
-        icon = Icon("ORNION", icon_image, "ORNION Assistant", menu=Menu(item('Quit', quit_app)))
-        icon.run()
-    except Exception as e:
-        print("⚠️ Tray initialization failed:", e)
-        run_flask()
-
-
-# =========================================================
-#                      ENTRY POINT
+#                 RUN FLASK (PRODUCTION)
 # =========================================================
 if __name__ == "__main__":
-    # Detect if running locally or on Render
-    is_render = os.getenv("RENDER", False)
-
-    if is_render:
-        print("🚀 Running on Render — starting Flask only.")
-        app.run(host="0.0.0.0", port=5000)
-    else:
-        # Local desktop mode
-        flask_thread = threading.Thread(target=run_flask, daemon=True)
-        flask_thread.start()
-        start_tray()
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
