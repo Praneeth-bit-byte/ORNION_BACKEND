@@ -310,9 +310,15 @@ def start_tray():
 #                      ENTRY POINT
 # =========================================================
 if __name__ == "__main__":
-    # Run Flask in a background thread
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
+    # Detect if running locally or on Render
+    is_render = os.getenv("RENDER", False)
 
-    # Run system tray in main thread
-    start_tray()
+    if is_render:
+        print("🚀 Running on Render — starting Flask only.")
+        app.run(host="0.0.0.0", port=5000)
+    else:
+        # Local desktop mode
+        flask_thread = threading.Thread(target=run_flask, daemon=True)
+        flask_thread.start()
+        start_tray()
+

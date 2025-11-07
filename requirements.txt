@@ -1,0 +1,8 @@
+flask
+flask-cors
+gunicorn
+requests
+pymongo
+python-dotenv
+gtts
+pillow
