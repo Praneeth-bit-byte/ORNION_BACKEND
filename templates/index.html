@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JARVIS Interface</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+  <style>
+     * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background: black;
+      color: #00ffe7;
+      overflow: hidden;
+    }
+
+    .startup-screen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: black;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 2s ease;
+    }
+
+    .startup-screen.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-circle {
+      width: 80px;
+      height: 80px;
+      border: 6px solid #00ffe7;
+      border-top: 6px solid transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 2rem;
+      margin-bottom: 15px;
+      text-shadow: 0 0 15px #00ffe7;
+      animation: glowText 1.5s infinite alternate;
+    }
+
+    .percentage {
+      font-size: 1.8rem;
+      text-shadow: 0 0 10px #00ffe7;
+    }
+
+    @keyframes glowText {
+      from { text-shadow: 0 0 10px #00ffe7; }
+      to   { text-shadow: 0 0 25px #00ffe7, 0 0 35px #00ffe7; }
+    }
+
+    .container {
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      background: transparent;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    .container.fade-in {
+      opacity: 1;
+    }
+
+    .center-circle {
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #001f1f 0%, #000000 80%);
+      box-shadow: 0 0 35px #00ffe7, inset 0 0 15px #00ffe7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulseGlow 2s infinite ease-in-out;
+      position: relative;
+      z-index: 4;
+    }
+
+    .waveform {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(transparent, #00ffe710);
+      box-shadow: 0 0 15px #00ffe7;
+      animation: wavePulse 2s infinite ease-in-out;
+      z-index: 2;
+    }
+
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 20px #00ffe7, inset 0 0 10px #00ffe7; }
+      50% { box-shadow: 0 0 50px #00ffe7, inset 0 0 25px #00ffe7; }
+      100% { box-shadow: 0 0 20px #00ffe7, inset 0 0 10px #00ffe7; }
+    }
+
+    @keyframes wavePulse {
+      0% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.3); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 0.5; }
+    }
+
+    .hud-top {
+      position: absolute;
+      top: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .clock-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+    }
+
+    .clock {
+      background: rgba(0, 255, 255, 0.1);
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 1.9rem;
+      backdrop-filter: blur(3px);
+      box-shadow: 0 0 15px #00ffe7;
+      z-index: 2;
+    }
+
+    .shine-line-left,
+    .shine-line-right {
+      width: 100px;
+      height: 2px;
+      background: linear-gradient(to right, transparent, #00ffe7);
+      animation: shineMove 2s infinite alternate;
+    }
+
+    .shine-line-right {
+      background: linear-gradient(to left, transparent, #00ffe7);
+    }
+
+    .date-day {
+      position: absolute;
+      right: 70px;
+      top: 20px;
+      background: rgba(0, 255, 255, 0.1);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 1.5rem;
+      backdrop-filter: blur(3px);
+      box-shadow: 0 0 12px #00ffe7;
+    }
+
+    .system-status {
+      position: absolute;
+      left: 30px;
+      top: 20px;
+      font-size: 1.2rem;
+      color: #00ffe7;
+      text-shadow: 0 0 10px #00ffe7;
+    }
+
+    .wifi-status {
+      position: absolute;
+      top: 100px;
+      right: 80px;
+      background: rgba(0, 255, 255, 0.1);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 1.3rem;
+    }
+
+    .chat-box {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      max-height: 180px;
+      width: 98%;
+      font-size: 0.9rem;
+      background-color: rgba(0, 255, 255, 0.05);
+      padding: 12px;
+      border-radius: 12px;
+      color: #00ffe7;
+      box-shadow: 0 0 12px #00ffe7;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: thin;
+    }
+
+    .chat-message {
+      background-color: rgba(0, 255, 255, 0.1);
+      padding: 6px 10px;
+      border-radius: 8px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      max-width: 100%;
+    }
+
+    .chat-message.user {
+      align-self: flex-start;
+      border-left: 3px solid #00ffe7;
+    }
+
+    .chat-message.bot {
+      align-self: flex-end;
+      border-right: 3px solid #00ffe7;
+    }
+
+    .eye-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      z-index: 1;
+    }
+
+    .left-panel-image {
+      position: absolute;
+      left: 120px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
+      width: 260px;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .left-panel-image img {
+      width: 100%;
+      height: 100%;
+      border-radius: 0%;
+      object-fit: cover;
+      box-shadow: none;
+    }
+
+    @keyframes shineMove {
+      0% { opacity: 0.3; transform: scaleX(1); }
+      100% { opacity: 1; transform: scaleX(1.1); }
+    }
+
+    #contentWrapper {
+  position: relative;
+  width: 98vw;
+  height: 98vh;
+  margin: 1vh auto;
+  border: 3px solid #00ffe7;
+  border-radius: 20px;
+  box-shadow: 0 0 20px #00ffe7, 0 0 40px #00ffe7 inset;
+  padding: 10px;
+}
+
+.right-panel {
+  position: absolute;
+  right: 40px;
+  top: 20%;
+  transform: translateY(-10%);
+  width: 260px;
+  padding: 20px;
+  background: rgba(0, 255, 255, 0.05);
+  border: 1px solid #00ffe7;
+  border-radius: 12px;
+  box-shadow: 0 0 15px #00ffe7;
+  color: #00ffe7;
+  font-size: 1rem;
+  backdrop-filter: blur(6px);
+}
+
+.right-panel h3 {
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+  text-align: center;
+  text-shadow: 0 0 5px #00ffe7;
+  border-bottom: 1px solid #00ffe7;
+  padding-bottom: 10px;
+}
+
+.right-panel ul {
+  list-style: none;
+  padding: 0;
+}
+
+.right-panel li {
+  margin-bottom: 10px;
+  text-shadow: 0 0 3px #00ffe7;
+}
+
+.right-panel button {
+  width: 100%;
+  padding: 8px 0;
+  background: #00ffe7;
+  color: #001f1f;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  box-shadow: 0 0 8px #00ffe7;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.right-panel button:hover {
+  background: #007fe7;
+  color: #fff;
+  box-shadow: 0 0 15px #00ffe7;
+}
+
+
+#startButton {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  padding: 12px 28px;
+  background: #00ffe7;
+  color: #000;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #00ffe7, 0 0 20px #00ffe7 inset;
+  cursor: pointer;
+  animation: pulseButton 2s infinite ease-in-out;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#startButton:hover {
+  transform: translateX(-50%) scale(1.05);
+  box-shadow: 0 0 15px #00ffe7, 0 0 30px #00ffe7 inset;
+}
+
+@keyframes pulseButton {
+  0% { box-shadow: 0 0 10px #00ffe7, 0 0 20px #00ffe7 inset; }
+  50% { box-shadow: 0 0 20px #00ffe7, 0 0 35px #00ffe7 inset; }
+  100% { box-shadow: 0 0 10px #00ffe7, 0 0 20px #00ffe7 inset; }
+}
+
+.history-btn {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  background: rgba(0, 255, 255, 0.2);
+  color: cyan;
+  border: 1px solid cyan;
+  border-radius: 12px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  transition: 0.3s ease;
+}
+
+.history-btn:hover {
+  background: rgba(0, 255, 255, 0.5);
+  box-shadow: 0 0 10px cyan;
+}
+
+.history-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 20, 40, 0.95);
+  backdrop-filter: blur(10px);
+  color: white;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.4s ease;
+}
+
+.hidden {
+  display: none;
+}
+
+.history-header {
+  width: 90%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px;
+}
+
+.close-btn {
+  background: none;
+  border: 1px solid cyan;
+  color: cyan;
+  border-radius: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.history-container {
+  width: 90%;
+  max-width: 800px;
+  padding-bottom: 50px;
+}
+
+.message-block {
+  border-left: 3px solid cyan;
+  background: rgba(0, 255, 255, 0.1);
+  margin: 10px 0;
+  padding: 10px 15px;
+  border-radius: 10px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+  </style>
+</head>
+<body>
+  <button onclick="startJarvis()" id="startButton">
+  Start JARVIS
+</button>
+
+
+  <div id="contentWrapper">
+
+    <!-- STARTUP SCREEN -->
+    <div class="startup-screen" id="startup">
+      <div class="loading-circle"></div>
+      <div class="loading-text" id="greet">Initializing J.A.R.V.I.S...</div>
+      <div class="percentage" id="percent">0%</div>
+    </div>
+
+    <!-- MAIN INTERFACE -->
+    <div class="container" id="mainContent">
+      <div class="hud-top">
+        <div class="system-status">System Online</div>
+        <div class="clock-wrapper">
+          <div class="shine-line-left"></div>
+          <div class="clock" id="clock">00:00</div>
+          <div class="shine-line-right"></div>
+        </div>
+        <div class="date-day" id="dateDay">Detecting...</div>
+      </div>
+
+      <div class="wifi-status" id="wifiStatus">WiFi: Detecting...</div>
+
+      <div class="center-circle">
+        <img src="https://github.com/Praneeth-bit-byte/robot-eye/blob/main/Robot.png?raw=true" alt="Robotic Eye" class="eye-image">
+        <div class="waveform"></div>
+      </div>
+
+      <div class="left-panel-image">
+        <img src="https://raw.githubusercontent.com/Praneeth-bit-byte/waveform/main/waveform.png" alt="Left Panel" />
+      </div>
+    </div>
+
+    <!-- CHAT & RIGHT PANEL -->
+    <div class="chat-box" id="chatBox"></div>
+
+    <div class="right-panel">
+      <h3>SYSTEM DETAILS</h3>
+      <ul>
+        <li><strong>CPU:</strong> <span id="cpuInfo">Detecting...</span></li>
+        <li><strong>RAM:</strong> <span id="ramInfo">Detecting...</span></li>
+        <li><strong>OS:</strong> <span id="osInfo">Detecting...</span></li>
+        <li><strong>Battery:</strong> <span id="batteryInfo">Detecting...</span></li>
+        <li><strong>Status:</strong> <span id="statusInfo">Offline</span></li>
+        <li><button onclick="stopSpeaking()">Stop</button></li>
+      </ul>
+    </div>
+  </div>
+  <button id="historyBtn" class="history-btn">🕘 History</button>
+
+<!-- 🪟 History Overlay -->
+<div id="historyOverlay" class="history-overlay hidden">
+  <div class="history-header">
+    <h2>Conversation History</h2>
+    <button id="closeHistory" class="close-btn">✖</button>
+  </div>
+  <div id="historyContainer" class="history-container">
+    <p class="loading">Loading your previous JARVIS sessions...</p>
+  </div>
+</div>
+<script>
+ // ------------------- SESSION HANDLER -------------------
+let sessionId = null;
+
+// Wait for the session to initialize before anything else
+async function initSession() {
+  try {
+    const savedSession = localStorage.getItem("sessionId");
+
+    if (!savedSession) {
+      const res = await fetch("/start_session", { method: "POST" });
+      const data = await res.json();
+
+      if (data.session_id) {
+        sessionId = data.session_id;
+        localStorage.setItem("sessionId", sessionId);
+        console.log("🟢 New MongoDB session started:", sessionId);
+      } else {
+        console.error("❌ Failed to start session:", data);
+      }
+    } else {
+      sessionId = savedSession;
+      console.log("🟢 Resuming session:", sessionId);
+    }
+  } catch (err) {
+    console.error("❌ Session initialization failed:", err);
+  }
+}
+
+// ------------------- HISTORY OVERLAY -------------------
+const historyBtn = document.getElementById('historyBtn');
+const historyOverlay = document.getElementById('historyOverlay');
+const closeHistory = document.getElementById('closeHistory');
+const historyContainer = document.getElementById('historyContainer');
+
+// Open history overlay
+historyBtn.addEventListener('click', async () => {
+  historyOverlay.classList.remove('hidden');
+  await loadHistory();
+});
+
+// Close overlay
+closeHistory.addEventListener('click', () => {
+  historyOverlay.classList.add('hidden');
+});
+
+// Fetch history from backend
+async function loadHistory() {
+  historyContainer.innerHTML = "<p class='loading'>Loading...</p>";
+
+  if (!sessionId) {
+    historyContainer.innerHTML = "<p>No session ID found. Please start chatting first.</p>";
+    return;
+  }
+
+  try {
+    const res = await fetch(`/get_history/${sessionId}`);
+    const data = await res.json();
+
+    if (data.messages && data.messages.length > 0) {
+      historyContainer.innerHTML = `
+        <p class='session-info'>🕓 Session started at: ${new Date(data.created_at).toLocaleString()}</p>
+      `;
+      data.messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.classList.add('message-block');
+        div.innerHTML = `
+          <strong>${msg.speaker}:</strong> ${msg.text}
+          <br><small>${new Date(msg.timestamp).toLocaleString()}</small>
+        `;
+        historyContainer.appendChild(div);
+      });
+    } else {
+      historyContainer.innerHTML = "<p>No history found for this session.</p>";
+    }
+  } catch (err) {
+    console.error("❌ Error loading history:", err);
+    historyContainer.innerHTML = "<p>Error loading history.</p>";
+  }
+}
+
+// ------------------- CORE VARIABLES -------------------
+let listening = false;
+let speaking = false;
+let wakeTriggered = false;
+let inactivityTimer;
+let utter = null;
+
+// ------------------- SPEECH RECOGNITION SETUP -------------------
+window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+recognition.continuous = true;
+recognition.interimResults = false;
+recognition.lang = 'en-US';
+
+// ------------------- SAFE FUNCTIONS -------------------
+function safeStartRecognition() {
+  if (!speaking) {
+    try { recognition.start(); }
+    catch (e) {
+      if (!e.message.includes("already started")) console.warn(e);
+    }
+  }
+}
+
+// ------------------- SPEECH HANDLERS -------------------
+function stopSpeaking() {
+  speechSynthesis.cancel();
+  speaking = false;
+  utter = null;
+  safeStartRecognition();
+}
+
+function speakText(text) {
+  if (speechSynthesis.speaking) speechSynthesis.cancel();
+  speaking = true;
+  try { recognition.stop(); } catch {}
+
+  utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1;
+
+  utter.onend = () => {
+    speaking = false;
+    utter = null;
+    safeStartRecognition();
+  };
+
+  utter.onerror = () => {
+    speaking = false;
+    utter = null;
+    safeStartRecognition();
+  };
+
+  speechSynthesis.speak(utter);
+}
+
+// ------------------- SYSTEM STATE HANDLERS -------------------
+function sleepJarvis() {
+  fetch('/sleep', { method: 'POST' });
+  document.getElementById("statusInfo").textContent = "Sleeping";
+  hideMainContent();
+  wakeTriggered = false;
+  recognition.stop();
+}
+
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(sleepJarvis, 10 * 60 * 1000); // 10 minutes
+}
+
+// ------------------- BOOT SEQUENCE -------------------
+function startBoot() {
+  let percent = 0;
+  const percentEl = document.getElementById('percent');
+  const greetEl = document.getElementById('greet');
+  const startupScreen = document.getElementById('startup');
+  const hour = new Date().getHours();
+
+  let greeting = "Good Evening Mr. Praneeth, Welcome Back!";
+  if (hour < 12) greeting = "Good Morning Mr. Praneeth, Welcome Back!";
+  else if (hour < 18) greeting = "Good Afternoon Mr. Praneeth, Welcome Back!";
+
+  greetEl.innerText = greeting;
+  setTimeout(() => speakText(greeting), 1000);
+
+  const interval = setInterval(() => {
+    percent++;
+    percentEl.innerText = percent + '%';
+    if (percent >= 100) {
+      clearInterval(interval);
+      startupScreen.classList.add('fade-out');
+      setTimeout(() => {
+        startupScreen.style.display = 'none';
+        document.getElementById("statusInfo").textContent = "Say 'Wake up'";
+        safeStartRecognition();
+      }, 2000);
+    }
+  }, 30);
+}
+
+// ------------------- UI CONTROLS -------------------
+function showMainContent() {
+  const mc = document.getElementById("mainContent");
+  mc.classList.remove("fade-out");
+  mc.classList.add("fade-in");
+  document.getElementById("statusInfo").textContent = "Online";
+  updateClock();
+  setInterval(updateClock, 1000);
+  updateWifiStatus();
+  setInterval(updateWifiStatus, 10000);
+  resetInactivityTimer();
+}
+
+function hideMainContent() {
+  const mc = document.getElementById("mainContent");
+  mc.classList.remove("fade-in");
+  mc.classList.add("fade-out");
+  document.getElementById("statusInfo").textContent = "Offline";
+}
+
+// ------------------- SYSTEM INFO -------------------
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').innerText = now.toLocaleTimeString();
+  document.getElementById('dateDay').innerText = now.toDateString();
+}
+
+function updateSystemDetails() {
+  const userAgent = navigator.userAgent;
+  const os = userAgent.includes("Windows") ? "Windows" :
+    userAgent.includes("Mac") ? "macOS" :
+    userAgent.includes("Linux") ? "Linux" : "Unknown";
+  document.getElementById('osInfo').textContent = os;
+
+  const ram = navigator.deviceMemory || "Unknown";
+  document.getElementById('ramInfo').textContent = typeof ram === "number" ? `${ram} GB` : ram;
+
+  const batteryInfo = document.getElementById('batteryInfo');
+  if (navigator.getBattery) {
+    navigator.getBattery().then(battery => {
+      function updateBatteryStatus() {
+        const level = Math.round(battery.level * 100);
+        const charging = battery.charging ? "⚡ Charging" : "Battery";
+        batteryInfo.textContent = `${level}% (${charging})`;
+      }
+      updateBatteryStatus();
+      battery.addEventListener('levelchange', updateBatteryStatus);
+      battery.addEventListener('chargingchange', updateBatteryStatus);
+    });
+  } else {
+    batteryInfo.textContent = "Not Supported";
+  }
+}
+
+function updateWifiStatus() {
+  const wifi = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const element = document.getElementById('wifiStatus');
+  if (wifi && element) {
+    const downlink = wifi.downlink || 0;
+    let quality = "Offline";
+    if (downlink >= 30) quality = "Excellent";
+    else if (downlink >= 15) quality = "Good";
+    else if (downlink >= 5) quality = "Fair";
+    else if (downlink > 0) quality = "Weak";
+    element.textContent = `WiFi: ${quality} (${downlink.toFixed(1)} Mbps)`;
+  } else {
+    element.textContent = "WiFi: Not Available";
+  }
+}
+
+// ------------------- CHAT HANDLER -------------------
+function displayChat(user, bot) {
+  const box = document.getElementById("chatBox");
+  const userMsg = document.createElement("div");
+  userMsg.className = "chat-message user";
+  userMsg.innerHTML = `<strong>USER:</strong> ${user}`;
+
+  const botMsg = document.createElement("div");
+  botMsg.className = "chat-message bot";
+  botMsg.innerHTML = `<strong>JARVIS:</strong> ${bot}`;
+
+  box.appendChild(userMsg);
+  box.appendChild(botMsg);
+
+  if (box.children.length > 100) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+
+  speakText(bot);
+
+  // Save both messages in MongoDB
+  if (sessionId) {
+    fetch("/save_message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, speaker: "User", text: user })
+    });
+
+    fetch("/save_message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, speaker: "Jarvis", text: bot })
+    });
+  } else {
+    console.warn("⚠️ No sessionId found, message not saved.");
+  }
+}
+
+// ------------------- VOICE INPUT HANDLING -------------------
+recognition.onresult = async (e) => {
+  const transcript = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
+  console.log("Transcript heard:", transcript);
+  if (!transcript) return;
+
+  // Wake command
+  if (!wakeTriggered && transcript.includes("wake up")) {
+    wakeTriggered = true;
+    speakText("System Activated");
+    showMainContent();
+    await fetch('/wake', { method: 'POST' });
+    return;
+  }
+
+  // Sleep/off command
+  if (wakeTriggered && ["wait a minute", "bye", "off", "sleep"].some(cmd => transcript.includes(cmd))) {
+    speakText("Going offline. Say 'wake up' to activate me again.");
+    sleepJarvis();
+    return;
+  }
+
+  // Skip if inactive or busy
+  if (!wakeTriggered || speaking || listening) return;
+
+  listening = true;
+  resetInactivityTimer();
+
+  try {
+    const res = await fetch("/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: transcript })
+    });
+    const data = await res.json();
+    displayChat(data.input, data.reply || "Sorry, I didn’t get that.");
+  } catch (err) {
+    console.error("Error talking to backend:", err);
+  }
+
+  listening = false;
+};
+
+recognition.onerror = (e) => {
+  console.warn("Recognition error:", e);
+  safeStartRecognition();
+};
+
+recognition.onend = () => {
+  if (!speaking && wakeTriggered) safeStartRecognition();
+};
+
+// ------------------- STARTUP -------------------
+async function startJarvis() {
+  document.getElementById("startButton").style.display = "none";
+  await initSession(); // Ensure session is ready before startup
+  startBoot();
+  updateSystemDetails();
+  document.getElementById("cpuInfo").textContent = "Intel / AMD / Apple Silicon";
+}
+
+// ------------------- DESKTOP BUTTON POLL -------------------
+setInterval(async () => {
+  try {
+    const res = await fetch('/trigger_listen', { method: 'POST' });
+    const data = await res.json();
+    if (data.status === "started_listening") startJarvis();
+  } catch {}
+
+  try {
+    const res2 = await fetch('/trigger_stop', { method: 'POST' });
+    const data2 = await res2.json();
+    if (data2.status === "stopped_speaking") stopSpeaking();
+  } catch {}
+}, 2500);
+
+// ------------------- INITIALIZE -------------------
+document.addEventListener("DOMContentLoaded", async () => {
+  await initSession();
+  console.log("✅ Session ready:", sessionId);
+});
+
+</script>
+</body>
+</html>
