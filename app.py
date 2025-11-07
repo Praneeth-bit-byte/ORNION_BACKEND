@@ -5,13 +5,15 @@ import threading
 import subprocess
 import uuid
 from datetime import datetime
+import tempfile
 
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from pymongo import MongoClient
 import requests as py_requests
 from dotenv import load_dotenv
-import pyttsx3
+from gtts import gTTS
+from playsound import playsound
 from pystray import Icon, Menu, MenuItem as item
 from PIL import Image
 
@@ -20,16 +22,19 @@ from PIL import Image
 # =========================================================
 load_dotenv()
 
-# --- Voice engine setup ---
-engine = pyttsx3.init()
-engine.setProperty('rate', 175)
-engine.setProperty('volume', 1.0)
-
+# =========================================================
+#               VOICE ENGINE (gTTS)
+# =========================================================
 def speak(text: str) -> None:
-    """Convert text to speech using pyttsx3."""
-    print(f"JARVIS: {text}")
-    engine.say(text)
-    engine.runAndWait()
+    """Convert text to speech using Google TTS."""
+    print(f"ORNION: {text}")
+    try:
+        tts = gTTS(text=text, lang='en', slow=False, tld='com')
+        with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as fp:
+            tts.save(fp.name)
+            playsound(fp.name)
+    except Exception as e:
+        print(f"[Speech Error] {e}")
 
 
 # =========================================================
@@ -38,7 +43,7 @@ def speak(text: str) -> None:
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 PERPLEXITY_API_URL = os.getenv("PERPLEXITY_API_URL", "https://api.perplexity.ai/chat/completions")
 MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME", "JarvisDB")
+DB_NAME = os.getenv("DB_NAME", "OrnionDB")
 CONV_COLLECTION = os.getenv("CONV_COLLECTION", "Conversations")
 
 
@@ -140,7 +145,7 @@ def index():
 
 @app.route('/ask', methods=['POST'])
 def ask():
-    """Main query endpoint for JARVIS."""
+    """Main query endpoint for ORNION."""
     user_input = request.json.get('message', '')
     start = time.time()
 
@@ -154,6 +159,10 @@ def ask():
     # Otherwise use AI backend
     reply = ask_perplexity(user_input)
     print("Perplexity took", round(time.time() - start, 2), "seconds")
+
+    # Speak the reply aloud
+    threading.Thread(target=speak, args=(reply,), daemon=True).start()
+
     return jsonify({'input': user_input, 'reply': reply})
 
 
@@ -217,7 +226,7 @@ def start_session():
 
 @app.route('/save_message', methods=['POST'])
 def save_message():
-    """Save user or JARVIS message into conversation."""
+    """Save user or ORNION message into conversation."""
     try:
         if conversations is None:
             return jsonify({"error": "Database unavailable"}), 500
@@ -271,8 +280,8 @@ def get_history(session_id):
 #                 SYSTEM TRAY INTEGRATION
 # =========================================================
 def quit_app(icon, item):
-    """Exit JARVIS system tray."""
-    print("🛑 Exiting Jarvis...")
+    """Exit ORNION system tray."""
+    print("🛑 Exiting Ornion...")
     os._exit(0)
 
 def start_listening():
@@ -289,8 +298,8 @@ def run_flask():
 def start_tray():
     """Start system tray icon (Windows only)."""
     try:
-        icon_image = Image.open("jarvis.png")
-        icon = Icon("Jarvis", icon_image, "Jarvis Assistant", menu=Menu(item('Quit', quit_app)))
+        icon_image = Image.open("ornion.png")
+        icon = Icon("ORNION", icon_image, "ORNION Assistant", menu=Menu(item('Quit', quit_app)))
         icon.run()
     except Exception as e:
         print("⚠️ Tray initialization failed:", e)
